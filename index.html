@@ -5,7 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101827">
 <title>NEET Master Tracker</title>
-<style>
+ /* 3D animated background */
+body {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -28%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 18% 24%, rgba(63,190,255,.24), transparent 32%),
+    radial-gradient(ellipse at 78% 30%, rgba(150,92,255,.22), transparent 34%),
+    radial-gradient(ellipse at 52% 82%, rgba(54,220,174,.16), transparent 36%);
+  filter: blur(24px);
+  animation: nebulaFloat 18s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: -12% -30% 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(117,174,255,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117,174,255,.12) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transform: perspective(650px) rotateX(58deg) scale(1.65);
+  transform-origin: top center;
+  opacity: .26;
+  animation: gridDrift 22s linear infinite;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes nebulaFloat {
+  from { transform: translate3d(-2%,0,0) scale(1); }
+  to { transform: translate3d(2%,2%,0) scale(1.08); }
+}
+
+@keyframes gridDrift {
+  to { background-position: 0 92px, 92px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}   <style>
 :root{--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#28384e;--text:#edf3fb;--muted:#9aabc1;--accent:#70d6b2;--blue:#83b7ff;--gold:#f4c66a;--red:#ff8d8d}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#152943 0,#0b1220 55%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
 .wrap{max-width:1150px;margin:auto;padding:22px 16px 56px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
