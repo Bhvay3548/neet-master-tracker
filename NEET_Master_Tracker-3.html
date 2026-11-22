@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>NEET Master Tracker</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#28384e;--text:#edf3fb;--muted:#9aabc1;--accent:#70d6b2;--blue:#83b7ff;--gold:#f4c66a;--red:#ff8d8d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#152943 0,#0b1220 55%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1150px;margin:auto;padding:22px 16px 56px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+h1{font-size:clamp(25px,4vw,36px);margin:0;letter-spacing:-.7px}.sub{color:var(--muted);margin:5px 0 0}.actions{display:flex;gap:8px;flex-wrap:wrap}
+button,.filebtn{border:1px solid var(--line);background:#1a2a40;color:var(--text);padding:10px 14px;border-radius:11px;font-weight:650;cursor:pointer;font-size:13px}
+button.primary{background:var(--accent);color:#092019;border-color:transparent}button:hover,.filebtn:hover{filter:brightness(1.12)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+.stat,.subject,.chapter{background:linear-gradient(145deg,var(--panel),#101a29);border:1px solid var(--line);border-radius:16px}
+.stat{padding:16px}.stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}.stat .v{font-size:27px;font-weight:800;margin-top:5px}.stat small{color:var(--muted)}
+.overall{padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:16px}
+.progress-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}.progress-head strong{font-size:15px}
+.track{height:11px;background:#26364b;border-radius:20px;overflow:hidden}.fill{height:100%;width:0;background:linear-gradient(90deg,#54c9a2,#91e2c5);border-radius:20px;transition:width .25s}
+.subjects{display:grid;grid-template-columns:1fr;gap:15px;margin-top:18px}
+.subject{padding:17px}.subject-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.subject h2{font-size:19px;margin:0}.subject-meta{color:var(--muted);font-size:13px}
+.chapter-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.chapter{padding:12px;background:var(--panel2);border-radius:12px;display:flex;gap:12px;align-items:flex-start;min-width:0}
+.info{flex:1;min-width:0}.name{font-weight:650;overflow-wrap:anywhere}.note{font-size:12px;color:var(--muted);margin-top:4px}
+select{background:#0d1726;color:var(--text);border:1px solid #354960;border-radius:9px;padding:8px 9px;max-width:132px;font-size:12px}
+.status-done{border-color:#286b58}.status-partial{border-color:#80652d}.status-unconfirmed{border-color:#354960}
+.footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;color:var(--muted);font-size:12px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#e4fff4;color:#09251b;padding:10px 16px;border-radius:999px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}.hint{font-size:12px;color:var(--muted);margin-top:9px}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.chapter-list{grid-template-columns:1fr}.wrap{padding:18px 12px 40px}.chapter{padding:11px}select{max-width:125px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>NEET Master Tracker</h1><p class="sub">Your syllabus progress, updated instantly as you change chapter status.</p></div>
+    <div class="actions">
+      <button class="primary" id="saveBtn">Save progress</button>
+      <button id="exportBtn">Backup</button>
+      <label class="filebtn" for="importFile">Restore backup</label><input id="importFile" type="file" accept="application/json" hidden>
+    </div>
+  </header>
+  <section class="stats">
+    <div class="stat"><div class="k">Overall done</div><div class="v" id="overallPct">0%</div><small id="doneCount">0 / 0 chapters</small></div>
+    <div class="stat"><div class="k">Completed</div><div class="v" id="doneNum">0</div><small>Fully done chapters</small></div>
+    <div class="stat"><div class="k">In progress</div><div class="v" id="partialNum">0</div><small>Partially completed</small></div>
+    <div class="stat"><div class="k">Not started / unconfirmed</div><div class="v" id="todoNum">0</div><small>Yet to be confirmed</small></div>
+  </section>
+  <section class="overall">
+    <div class="progress-head"><strong>Overall syllabus completion</strong><strong id="overallLabel">0%</strong></div>
+    <div class="track"><div class="fill" id="overallBar"></div></div>
+    <p class="hint">Only chapters marked <b>Done</b> count towards the completion percentage. Partial chapters are tracked separately.</p>
+  </section>
+  <main id="subjects" class="subjects"></main>
+  <div class="footer"><span id="saveState">Changes are saved automatically in this browser.</span><span>72 syllabus units · Local browser storage</span></div>
+</div>
+<div id="toast">Saved</div>
+<script>
+const INITIAL = {"Physics": [{"name": "Physics and Measurement", "status": "Unconfirmed", "note": "No completion confirmed yet"}, {"name": "Kinematics", "status": "Unconfirmed", "note": "Vectors studied; full chapter completion not confirmed"}, {"name": "Laws of Motion", "status": "Partial", "note": "Concepts studied; full chapter completion not confirmed"}, {"name": "Work, Energy and Power", "status": "Unconfirmed", "note": ""}, {"name": "Rotational Motion", "status": "Unconfirmed", "note": ""}, {"name": "Gravitation", "status": "Partial", "note": "One-shot in progress; reported up to superposition in 2D"}, {"name": "Properties of Solids and Liquids", "status": "Unconfirmed", "note": ""}, {"name": "Thermodynamics", "status": "Done", "note": "Previously confirmed complete"}, {"name": "Kinetic Theory of Gases", "status": "Done", "note": "Previously confirmed complete"}, {"name": "Oscillations and Waves", "status": "Done", "note": "SHM and Waves previously confirmed complete"}, {"name": "Electrostatics", "status": "Unconfirmed", "note": ""}, {"name": "Current Electricity", "status": "Unconfirmed", "note": ""}, {"name": "Magnetic Effects of Current and Magnetism", "status": "Unconfirmed", "note": ""}, {"name": "Electromagnetic Induction and Alternating Currents", "status": "Unconfirmed", "note": ""}, {"name": "Electromagnetic Waves", "status": "Unconfirmed", "note": ""}, {"name": "Optics", "status": "Unconfirmed", "note": ""}, {"name": "Dual Nature of Matter and Radiation", "status": "Unconfirmed", "note": ""}, {"name": "Atoms and Nuclei", "status": "Unconfirmed", "note": ""}, {"name": "Electronic Devices", "status": "Unconfirmed", "note": ""}, {"name": "Experimental Skills", "status": "Unconfirmed", "note": ""}], "Chemistry": [{"name": "Some Basic Concepts in Chemistry (Mole Concept)", "status": "Unconfirmed", "note": "Basics reported weak; completion not confirmed"}, {"name": "Atomic Structure", "status": "Unconfirmed", "note": ""}, {"name": "Chemical Bonding and Molecular Structure", "status": "Unconfirmed", "note": ""}, {"name": "Chemical Thermodynamics", "status": "Unconfirmed", "note": ""}, {"name": "Solutions", "status": "Unconfirmed", "note": ""}, {"name": "Equilibrium", "status": "Unconfirmed", "note": ""}, {"name": "Redox Reactions and Electrochemistry", "status": "Unconfirmed", "note": ""}, {"name": "Chemical Kinetics", "status": "Unconfirmed", "note": ""}, {"name": "Classification of Elements and Periodicity in Properties", "status": "Done", "note": "Previously confirmed complete"}, {"name": "P-Block Elements", "status": "Unconfirmed", "note": "Lectures were planned; completion not confirmed"}, {"name": "d- and f-Block Elements", "status": "Unconfirmed", "note": ""}, {"name": "Co-ordination Compounds", "status": "Partial", "note": "Studied; full completion and practice not confirmed"}, {"name": "Purification and Characterisation of Organic Compounds", "status": "Unconfirmed", "note": ""}, {"name": "Some Basic Principles of Organic Chemistry (GOC)", "status": "Done", "note": "GOC 22/22 lectures previously confirmed"}, {"name": "Hydrocarbons", "status": "Partial", "note": "Aromatic chemistry/reaction mechanism partly covered; full chapter not confirmed"}, {"name": "Organic Compounds Containing Halogens", "status": "Unconfirmed", "note": ""}, {"name": "Organic Compounds Containing Oxygen", "status": "Unconfirmed", "note": ""}, {"name": "Organic Compounds Containing Nitrogen", "status": "Unconfirmed", "note": ""}, {"name": "Biomolecules", "status": "Unconfirmed", "note": ""}, {"name": "Principles Related to Practical Chemistry", "status": "Unconfirmed", "note": ""}], "Biology": [{"name": "The Living World", "status": "Partial", "note": "NCERT reading and 20-question quiz completed (adjusted 19/20); module practice and revision pending."}, {"name": "Biological Classification", "status": "Partial", "note": "Monera and Protista revised; remaining chapter work not yet confirmed complete."}, {"name": "Plant Kingdom", "status": "Unconfirmed", "note": ""}, {"name": "Animal Kingdom", "status": "Unconfirmed", "note": ""}, {"name": "Morphology of Flowering Plants", "status": "Unconfirmed", "note": ""}, {"name": "Anatomy of Flowering Plants", "status": "Unconfirmed", "note": ""}, {"name": "Structural Organisation in Animals", "status": "Unconfirmed", "note": ""}, {"name": "Cell: The Unit of Life", "status": "Unconfirmed", "note": ""}, {"name": "Biomolecules", "status": "Unconfirmed", "note": ""}, {"name": "Cell Cycle and Cell Division", "status": "Unconfirmed", "note": ""}, {"name": "Photosynthesis in Higher Plants", "status": "Unconfirmed", "note": ""}, {"name": "Respiration in Plants", "status": "Unconfirmed", "note": ""}, {"name": "Plant Growth and Development", "status": "Unconfirmed", "note": ""}, {"name": "Breathing and Exchange of Gases", "status": "Unconfirmed", "note": ""}, {"name": "Body Fluids and Circulation", "status": "Unconfirmed", "note": ""}, {"name": "Excretory Products and Their Elimination", "status": "Unconfirmed", "note": ""}, {"name": "Locomotion and Movement", "status": "Unconfirmed", "note": ""}, {"name": "Neural Control and Coordination", "status": "Partial", "note": "Neural mechanism/topic completed on 23 Nov 2026; full chapter completion not confirmed."}, {"name": "Chemical Coordination and Integration", "status": "Unconfirmed", "note": ""}, {"name": "Sexual Reproduction in Flowering Plants", "status": "Unconfirmed", "note": "Completion not yet confirmed"}, {"name": "Human Reproduction", "status": "Done", "note": "User confirmed complete"}, {"name": "Reproductive Health", "status": "Done", "note": "User confirmed complete"}, {"name": "Principles of Inheritance and Variation", "status": "Done", "note": "User confirmed genetics complete"}, {"name": "Molecular Basis of Inheritance", "status": "Done", "note": "User confirmed molecular chapter complete"}, {"name": "Evolution", "status": "Unconfirmed", "note": ""}, {"name": "Human Health and Disease", "status": "Done", "note": "User confirmed complete"}, {"name": "Microbes in Human Welfare", "status": "Done", "note": "Previously confirmed complete; 30-question practice reported"}, {"name": "Biotechnology: Principles and Processes", "status": "Done", "note": "Previously confirmed complete"}, {"name": "Biotechnology and Its Applications", "status": "Partial", "note": "Previously reported started"}, {"name": "Organisms and Populations", "status": "Unconfirmed", "note": ""}, {"name": "Ecosystem", "status": "Unconfirmed", "note": ""}, {"name": "Biodiversity and Conservation", "status": "Unconfirmed", "note": ""}]};
+const KEY = "neet-master-tracker-v1";
+let tracker = structuredClone(INITIAL);
+function load(){
+  try{
+    const saved=localStorage.getItem(KEY);
+    if(saved){
+      const parsed=JSON.parse(saved);
+      for(const subject of Object.keys(INITIAL)){
+        if(Array.isArray(parsed[subject]) && parsed[subject].length===INITIAL[subject].length){
+          tracker[subject]=INITIAL[subject].map((ch,i)=>({...ch,...parsed[subject][i],name:ch.name}));
+        }
+      }
+    }
+  }catch(e){console.warn("Could not load saved tracker",e);}
+}
+function totals(list){
+  const all=list.flat();
+  return {total:all.length,done:all.filter(x=>x.status==="Done").length,partial:all.filter(x=>x.status==="Partial").length,todo:all.filter(x=>x.status==="Unconfirmed").length};
+}
+function pct(n,d){return d?Math.round(n/d*1000)/10:0}
+function render(){
+  const t=totals(Object.values(tracker));
+  const p=pct(t.done,t.total);
+  document.getElementById("overallPct").textContent=p+"%";
+  document.getElementById("overallLabel").textContent=p+"%";
+  document.getElementById("doneCount").textContent=`${t.done} / ${t.total} chapters`;
+  document.getElementById("doneNum").textContent=t.done;
+  document.getElementById("partialNum").textContent=t.partial;
+  document.getElementById("todoNum").textContent=t.todo;
+  document.getElementById("overallBar").style.width=p+"%";
+  const root=document.getElementById("subjects"); root.innerHTML="";
+  for(const [subject,chapters] of Object.entries(tracker)){
+    const st=totals([chapters]), sp=pct(st.done,st.total);
+    const section=document.createElement("section"); section.className="subject";
+    const head=document.createElement("div");head.className="subject-head";
+    const title=document.createElement("h2");title.textContent=subject;
+    const meta=document.createElement("div");meta.className="subject-meta";meta.textContent=`${st.done}/${st.total} done · ${sp}%`;
+    head.append(title,meta);
+    const bar=document.createElement("div");bar.className="track";bar.style.marginBottom="14px";
+    const fill=document.createElement("div");fill.className="fill";fill.style.width=sp+"%";bar.append(fill);
+    const list=document.createElement("div");list.className="chapter-list";
+    chapters.forEach((ch,index)=>{
+      const card=document.createElement("div");card.className="chapter "+(ch.status==="Done"?"status-done":ch.status==="Partial"?"status-partial":"status-unconfirmed");
+      const info=document.createElement("div");info.className="info";
+      const name=document.createElement("div");name.className="name";name.textContent=ch.name;info.append(name);
+      if(ch.note){const note=document.createElement("div");note.className="note";note.textContent=ch.note;info.append(note);}
+      const select=document.createElement("select");select.setAttribute("aria-label","Status for "+ch.name);
+      [["Unconfirmed","Not started"],["Partial","In progress"],["Done","Done"]].forEach(([v,label])=>{const o=document.createElement("option");o.value=v;o.textContent=label;select.append(o);});
+      select.value=ch.status;
+      select.addEventListener("change",()=>{tracker[subject][index].status=select.value;render();save(false);});
+      card.append(info,select);list.append(card);
+    });
+    section.append(head,bar,list);root.append(section);
+  }
+}
+function save(show=true){
+  try{localStorage.setItem(KEY,JSON.stringify(tracker));document.getElementById("saveState").textContent="Saved in this browser · "+new Date().toLocaleString();if(show){const toast=document.getElementById("toast");toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1300);}}
+  catch(e){document.getElementById("saveState").textContent="Browser storage unavailable. Please use Backup to save a copy.";}
+}
+document.getElementById("saveBtn").addEventListener("click",()=>save(true));
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify({version:1,updated:new Date().toISOString(),tracker},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="NEET_Tracker_Backup.json";a.click();URL.revokeObjectURL(a.href);
+});
+document.getElementById("importFile").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{const obj=JSON.parse(await file.text());const src=obj.tracker||obj;
+    for(const s of Object.keys(INITIAL)){if(!Array.isArray(src[s])||src[s].length!==INITIAL[s].length)throw Error("Backup does not match this tracker.");}
+    tracker=Object.fromEntries(Object.keys(INITIAL).map(s=>[s,INITIAL[s].map((ch,i)=>({...ch,...src[s][i],name:ch.name}))]));
+    render();save(true);
+  }catch(err){alert("Could not restore backup: "+err.message);}
+  e.target.value="";
+});
+load();render();save(false);
+</script>
+</body></html>
